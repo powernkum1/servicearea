@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>TOHO WATER AUTHORITY SERVICE AREA</title>
+    <link rel="stylesheet" href="https://js.arcgis.com/3.31/esri/css/esri.css">
+	<link rel="stylesheet" href="//code.jquery.com/ui/1.11.1/themes/smoothness/jquery-ui.min.css">
+	   <!-- original -->
+	   
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+	
+    <link rel="stylesheet" type="text/css" href="../../src/css/bootstrapmap.css"> 
+  
+   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script>
+  
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+  
+    <style>
+      html, body, #map {
+        height: 100%;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      #search {
+        display: block;
+        position: absolute;
+    
+        top: 21px;
+        left: 75px;
+		 z-index: 1;
+      }
+	  
+	     #HomeButton {
+     display: block;
+        position: absolute;
+        
+        top: 90px;
+        left: 20px;
+		 z-index: 1;
+    }
+	#BasemapToggle {
+      position: absolute;
+      bottom: 0px;
+      left: 0px;
+      z-index: 98;
+    }
+		
+		#panel, #flip{
+    bottom: 7%;
+    right: 1%;
+	margin-right: 10px;
+    position: absolute;
+    z-index: 2;
+    opacity: 0.9;
+	padding: 15px;
+    background-color: whitesmoke;
+    border-bottom-left-radius: 8px;
+    padding: 0px 0px 0px 10px;
+	//width:-10%;
+	
+  }
+   #panel {
+    padding: 15px;
+    display: none;
+  z-index: 1;
+ 
+  }
+  
+  
+  	#panel1{
+    top: 0.2%;
+    left: 39%;
+	margin-left: 10px;
+    position: absolute;
+    z-index: 0;
+    opacity: 0.9;
+	padding: 8px;
+    background-color: whitesmoke;
+    border-bottom-left-radius: 5px;
+    padding: 0px 0px 0px 8px;
+	//width:-10%;
+	
+  }
+  	
+  
+  
+   /* Changing background color of panel during hovering with opacity */
+   /* #ffffff  very very important color that makes u see through the background color */
+  .panel  > .panel-heading:hover {
+    background-color: gray;
+   /* border-color: #ec971f !important; */
+    opacity: 0.6;
+    filter: alpha(opacity=60);
+    z-index: 100;
+}
+   
+   
+   /* Changing the background color of panel */
+   .panel > .panel-heading {
+    background-image: none;
+    background-color: #5b9bd5;
+    color: white;
+     overflow: hidden;!important;
+    z-index:65;
+
+}
+
+  
+
+ /* removes spacing between panel group for outdoor buttons. */
+
+.panel-group1 .panel + .panel {
+    margin-top: 0;
+}
+
+  
+      .spotlight {
+        z-index:-1;
+        position:absolute;
+        left:50%;
+        top:50%;
+        border-radius:50%;
+        opacity:0;
+        box-shadow:
+        inset rgba(0,0,0,0.25) 0px 0px 20px 20px,
+        rgba(0,0,0,0.25) 0px 0px 0px 1000px;
+        transition:all 1000ms;
+        -moz-transition:all 1000ms;
+        -webkit-transition:all 1000ms;
+      }
+      .spotlight-active {
+        z-index:2;
+        opacity:1;
+      }
+	  
+	  
+	  #myLink{
+	  }
+	  
+    </style>
+    
+    <script src="https://js.arcgis.com/3.31/"></script>
+    <script>
+      require([
+        "esri/map",
+		"esri/urlUtils",
+		"esri/config",
+		"esri/arcgis/utils",
+		"dojo/i18n!esri/nls/jsapi",
+		  "dojo/string",
+		  "esri/tasks/query",
+		//"myModules/InfoWindow",
+		   "esri/dijit/BasemapToggle",
+        "esri/dijit/Search",
+		"esri/dijit/HomeButton",
+		'dojo/dnd/Moveable',
+			"esri/layers/FeatureLayer",
+			 //"esri/layers/ArcGISDynamicFeatureServiceLayer",
+			 "esri/symbols/SimpleLineSymbol",
+        "esri/symbols/SimpleFillSymbol",
+        "esri/symbols/TextSymbol",
+        "esri/renderers/SimpleRenderer",
+		"esri/InfoTemplate",
+  "esri/dijit/PopupTemplate",
+  "esri/dijit/Legend",
+        "esri/geometry/Extent",
+        "esri/graphic",
+        "esri/symbols/SimpleMarkerSymbol",
+        "dojo/dom",
+		"dojo/dom-style",
+		 "dojo/on",
+        "dojo/dom-construct",
+        "dojo/query",
+        "dojo/_base/Color",
+        "dojo/domReady!"
+		
+      ], function(Map, urlUtils,esriConfig,arcgisUtils,esriBundle,string,Query,BasemapToggle,Search, HomeButton,Moveable,FeatureLayer,SimpleLineSymbol, SimpleFillSymbol,TextSymbol, SimpleRenderer,InfoTemplate,PopupTemplate,Legend,Extent, Graphic, SimpleMarkerSymbol,dom, domStyle,on,domConstruct, query, Color) {
+        // create a map and instance of the geocoder widget here
+			 
+		 var link1;
+		 var sciName;
+		 var sciName1;
+		 var x;
+		 
+		 //var esriBundle for changing name from esri geocoder to Search within Central Florida
+		esriBundle.widgets.Search.main.esriLocatorName = "Search within Central Florida";
+		   //parser.parse();  
+		   
+		   // name for the placeholder text for widget
+		 	
+			  esriBundle.widgets.Search.main.placeholder = "Search within Central Florida"
+	
+	
+        var map = new Map("map", {
+          basemap: "streets", 
+          center: [-81.035992, 28.045300],
+          zoom: 8,
+		  showLabels : true, //very important that this must be set to true! 
+		 // { extent: startExtent }
+		// infoWindow: infoWindow
+        });
+
+			map.on("click", showPopup);
+	
+		
+		   var toggle = new BasemapToggle({
+        map: map,
+        basemap: "satellite"
+	
+      }, "BasemapToggle");
+      toggle.startup();
+		
+		
+				
+		// Set popup
+        var popup = map.infoWindow;
+        popup.highlight = false;
+        popup.titleInBody = true;
+        popup.domNode.className += " brown";
+		
+		//map.infoWindow.resize(300, 320);
+		
+			map.infoWindow.resize(250, 100);
+		//map.infoWindow.resize(200, 118);
+		//map.infoWindow.resize(300, 300);
+		
+		
+          var handle = query(".title", map.infoWindow.domNode)[0];  
+          var dnd = new Moveable(map.infoWindow.domNode, {  
+                handle: handle  
+           }); 
+		
+         var search = new Search({
+		    enableButtonMode: true,
+			enableLabel: false,
+            enableInfoWindow: true,
+            showInfoWindowOnSelect: false,
+            map: map,
+         }, dom.byId("search"));
+		 
+		      var sources = search.get("sources");
+			  
+		     //HomeButton
+	      var home=new HomeButton({
+				  map:map			
+				},"HomeButton");
+				home.startup();
+				
+         	//Create extent to limit search Florida extent
+		var extent = new esri.geometry.Extent({
+            "spatialReference": {
+               "wkid": 102100
+            },
+            "xmin": -9094371.766307,
+            "xmax":  -8986095.232452,
+            "ymin":  3188817.166343,
+            "ymax":   3309411.537729
+         });
+
+         //set the source's searchExtent to the extent specified above   
+         search.sources[0].searchExtent = extent;
+        
+
+				// original layer
+           // var url = "http://services3.arcgis.com/PPOHFcbrL50ceHvX/arcgis/rest/services/Service_locations/FeatureServer/0"
+			
+			
+		    var url = 	"https://services3.arcgis.com/PPOHFcbrL50ceHvX/arcgis/rest/services/Servicearea_shapefile/FeatureServer/0"
+			
+          featureLayer = new FeatureLayer(url, {
+		 
+            mode: FeatureLayer.MODE_ONDEMAND,
+            outFields: ["*"],
+			
+		   // showLabels : true //very important that this must be set to true!  
+          });
+		  
+		  
+		  map.addLayer(featureLayer);
+    
+	    
+  map.on("load", function(evt){
+    var legend = new Legend({
+      map: map,
+      layerInfos: [{
+        layer: featureLayer,
+		
+		// once the title is shown in small caps, then the Service Areas will show on same line
+       title: "Service Area"
+	   
+	   // However, when the title is shown in big caps, then the Service Areas will show on two lines.
+	    //title:"SERVICE_AREAS"
+      }]
+    }, "legendDiv");
+    
+    legend.startup(); 
+	
+
+  });
+
+
+        // Auto-recenter map when screen changes size
+        autoRecenter(map);
+  
+     // Recenter the map when the window changes size
+        function autoRecenter(map) {
+          var resizeDelay = 100;
+          on(map, 'load', function (map) {
+            on(window, 'resize', map, map.resize);
+          });
+          on(map, 'resize',  function(extent, width, height) { 
+            map.__resizeCenter = map.extent.getCenter();
+		
+            setTimeout(function() { 
+			 on(dom.byId("HomeButton"),"click",map.centerAt(map.__resizeCenter)); 
+			 
+                map.centerAt(map.__resizeCenter);                
+             // }
+            }, resizeDelay);
+			
+			
+          });
+        }
+		
+        search.on("select-result", showLocation); 
+        search.on("clear-search", removeSpotlight);
+		 on(dom.byId("HomeButton"),"click",removeSpotlight); 
+		 
+		
+		 
+		 $(document).ready(function(){
+	
+		 // code to show the panel for the legend upon reload and hide as needed
+		 $("#panel").show();
+    $("#flip").click(function(){
+        $("#panel").toggle("slow");
+    });
+
+});
+
+		  		   //event function to pop up info window when the feature layer is clicked upon.
+		 featureLayer.on("click", function(evt) {
+		 
+		//x == 0;
+		// destroyDijits();
+		// map.graphics.clear();
+		 var graphic = featureLayer; 
+	map.infoWindow.hide()
+	
+	var infoTemplate1 = new InfoTemplate();
+infoTemplate1.setTitle(" <b>TOHO SERVICE AREA</b>");
+infoTemplate1.setContent('<b style ="color:black">You are within the service area</b>');
+
+	graphic.setInfoTemplate(infoTemplate1)
+				
+});		
+
+
+	function showPopup(evt)
+		{
+			console.log(evt);
+			if (evt.graphic == undefined)
+			{
+				console.log("out");
+				map.infoWindow.anchor = "top";
+				map.infoWindow.setTitle("<b>OUTSIDE TOHO SERVICE AREA</b>");
+				map.infoWindow.setContent('<b style ="color:black">You are outside the service area</b>')
+				map.infoWindow.show(evt.mapPoint);
+			}			
+		}
+
+
+        function showLocation(e) {
+           map.graphics.clear();
+           var point = e.result.feature.geometry;
+           var symbol = new SimpleMarkerSymbol().setStyle(
+           SimpleMarkerSymbol.STYLE_SQUARE).setColor(
+             new Color([0, 0, 0, 0.7])
+           );
+           var graphic = new Graphic(point, symbol);
+           map.graphics.add(graphic);
+		   
+			var queryPoint = new Query();
+            queryPoint.geometry = point;
+			
+/*			
+           map.infoWindow.setTitle("Search Result");
+           map.infoWindow.setContent(e.result.name);
+           map.infoWindow.show(e.result.feature.geometry);
+		   */
+		   
+		   featureLayer.selectFeatures(queryPoint, FeatureLayer.SELECTION_NEW, function(features) {
+
+                    // if (intersect == true){
+                      if(features.length>0){
+					  
+					  map.infoWindow.hide()
+                        map.infoWindow.anchor = "top";
+                        map.infoWindow.setTitle("TOHO SERVICE AREA");
+                        map.infoWindow.setContent(e.result.feature.attributes.Match_addr +'<br/><br/>'+'<b style ="color:black">You are within the service area</b>');
+                        map.infoWindow.show(e.result.feature.geometry);
+					  
+					  }
+					   else{
+                        map.infoWindow.hide()
+                        map.infoWindow.anchor = "top";
+                        map.infoWindow.setTitle("OUTSIDE TOHO SERVICE AREA");
+                        map.infoWindow.setContent(e.result.feature.attributes.Match_addr +'<br/><br/>'+'<b style ="color:black">You are outside the service area</b>');
+                        map.infoWindow.show(e.result.feature.geometry);
+                  }})
+         }
+
+        function enableSpotlight() {
+          var html = "<div id='spotlight' class='spotlight'></div>"
+          domConstruct.place(html, dom.byId("map_container"), "first");
+        }
+
+        function removeSpotlight() {
+          //query(".spotlight").removeClass("spotlight-active");
+          map.infoWindow.hide();
+          map.graphics.clear();
+        }
+		
+	
+  
+   //Set the sources above to the search widget
+         search.set("sources", sources);
+
+         search.startup();
+		 
+		 
+      });
+    </script>
+  </head>
+  <body>
+
+
+    <div id="search"></div>
+	<div id="HomeButton"></div>           
+    <div id="map" ></div> 
+	 <div id="BasemapToggle"></div>
+	 
+	 
+		<a id="flip" href="#"><strong style = "font-size: 100%;font-weight:normal;font color=#1918a0;margin-right:20px;margin-bottom:40px"><i>Legend</i></strong></a>
+		
+		
+		<div id="panel1" ><strong style = "font-size: 125%;font-weight:normal;color:black;margin-right:8px;margin-bottom:8px;"><i>Our Service Area Map</i></strong></div>
+		
+<div id="panel">
+
+<div id="legendDiv"></div>
+
+	  
+
+
+</div>	
+
+
+  </body> 
+</html>
