@@ -115,9 +115,10 @@
       "esri/widgets/BasemapToggle",
       "esri/widgets/Legend",
       "esri/core/reactiveUtils",
-      "esri/rest/locator"
+      "esri/rest/locator",
+      "esri/geometry/geometryEngine"
 
-    ], function (Map, MapView, FeatureLayer, Search, Home, BasemapToggle, Legend, reactiveUtils,locator) {
+    ], function (Map, MapView, FeatureLayer, Search, Home, BasemapToggle, Legend, reactiveUtils,locator, geometryEngine) {
 
       // Create the map
       const map = new Map({
@@ -163,68 +164,63 @@
 
       // Add Feature Layer to the map
 
+      // const featureLayer = new FeatureLayer({
+      //   url: "https://services3.arcgis.com/PPOHFcbrL50ceHvX/arcgis/rest/services/Servicearea_shapefile/FeatureServer/0",
+      //   outFields: ["*"], // Ensure all fields are available
+      //   popupTemplate: {
+      //     title: "Within Service Area",
+      //     content: (feature) => {
+      //       // Retrieve the POLIT_NAME value from the feature attributes
+      //       const attributes = feature.graphic.attributes;
+      //       const reportName = attributes.POLIT_NAME;
+
+      //       console.log("Attributes: ",attributes.POLIT_NAME)
+
+      //       // Check if POLIT_NAME exists and construct URLs accordingly
+      //       if (reportName) {
+
+      //         var actualReportName = reportName.charAt(0).toUpperCase() + reportName.substring(1).toLowerCase(); // Since for CENTRAL the Name is Central
+
+      //         if(actualReportName==="St. cloud"){
+      //           actualReportName="St Cloud"; // Report Name is St Cloud
+      //         }
+
+      //         return `
+      //           <div style="display:flex;flex-direction:column;gap:10px;">
+      //           <div style="display:flex;justify-content:center;text-align:center;font-weight:bold;">${addressOnFeature?`${addressOnFeature}`:""} </div>
+      //           <div class="report-links">
+      //                <p>You are within the service area.</p>
+      //           </div>
+      //           </div>
+      //           `;
+      //       } else {
+      //           // Provide a fallback message if TWA_REPORT is missing
+      //           return `
+      //             <div class="report-links">
+      //             <p>You are outside the service area.</p>
+      //             </div>
+      //             `;
+      //       }
+      //     },
+      //     actions: [] // Disable default actions
+      //   }
+      // });
+
       const featureLayer = new FeatureLayer({
         url: "https://services3.arcgis.com/PPOHFcbrL50ceHvX/arcgis/rest/services/Servicearea_shapefile/FeatureServer/0",
         outFields: ["*"], // Ensure all fields are available
-        popupTemplate: {
-          title: "Within Service Area",
-          content: (feature) => {
-            // Retrieve the POLIT_NAME value from the feature attributes
-            const attributes = feature.graphic.attributes;
-            const reportName = attributes.POLIT_NAME;
-
-            console.log("Attributes: ",attributes.POLIT_NAME)
-
-            // Check if POLIT_NAME exists and construct URLs accordingly
-            if (reportName) {
-
-              var actualReportName = reportName.charAt(0).toUpperCase() + reportName.substring(1).toLowerCase(); // Since for CENTRAL the Name is Central
-
-              if(actualReportName==="St. cloud"){
-                actualReportName="St Cloud"; // Report Name is St Cloud
-              }
-
-              return `
-                <div style="display:flex;flex-direction:column;gap:10px;">
-                <div style="display:flex;justify-content:center;text-align:center;font-weight:bold;">${addressOnFeature?`${addressOnFeature}`:""} </div>
-                <div class="report-links">
-                     <p>You are within the service area.</p>
-                </div>
-                </div>
-                `;
-            } else {
-                // Provide a fallback message if TWA_REPORT is missing
-                return `
-                  <div class="report-links">
-                  <p>You are outside the service area.</p>
-                  </div>
-                  `;
-            }
-          },
-          actions: [] // Disable default actions
-        }
+        popup
       });
 
       map.add(featureLayer);
 
+      console.log("Feature Id added to the map., ",featureLayer.id);
+      const splitId = featureLayer.id.split("-")[0];
+      console.log("Split Id FC: ", splitId);
 
-      // Recenter the map to the feature layer
-
-      // Listen for window resize events
-      window.addEventListener("resize", () => {
-        if (featureLayer && featureLayer.fullExtent) {
-          view.goTo({
-            target: featureLayer.fullExtent, // Ensure it focuses on the entire extent of the feature layer
-            zoom: 10, // Optional: Adjust the zoom level as needed
-          }).catch((error) => {
-              console.error("Error recentering the view:", error);
-          });
-        }
-      });
-
-    
       // Clicks outside feature layer should return a popup with address information
-      view.when(()=>{
+      view.whenLayerView(featureLayer).then((layerView) => {
+        console.log("Layer View is ready.");
 
         view.on("click", (event) => {
 
@@ -232,6 +228,7 @@
 
           view.hitTest(event).then( async (response) => {
             const results = response.results;
+
 
             // Remove custom div displayed when clicked outside
             const existingDiv = document.querySelector(".custom-div");
@@ -269,14 +266,41 @@
                 console.error("Error retrieving address:",error);
             }
 
+            //Check results
+            console.log("Hit Test Results: ",results);
+
             // Check if any of the results belong to the FeatureLayer
             const featureLayerHit = results.some(
-              (result) => result.graphic && result.graphic.layer === featureLayer
+              (result) => {
+                const strippedLayerId = result.graphic && result.graphic.layer.id.split("-")[0];
+                console.log("Stripped Layer ID from event: ", strippedLayerId);
+                return result.graphic && strippedLayerId === featureLayer.id.split("-")[0];
+              }
             );
 
+            console.log("Feature Layer Hit: ",featureLayerHit.length );
 
-            if (featureLayerHit) {
+
+            if (featureLayerHit.length>0) {
               // Incase the featurelayer is hit. This is handled somewhere else
+              let popupContent = "";
+              const serviceMessage = await checkServicesAtPoint(mapPoint);
+
+              popupContent = `
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                <div style="display:flex;justify-content:center;text-align:center;font-weight:bold;">${addressOnFeature?`${addressOnFeature}`:""} </div>
+                <div class="report-links">
+                     <p>You are within the service area.</p>
+                      <p>${serviceMessage || ""}</p>
+                </div>
+                </div>
+                `;
+
+              view.openPopup({
+                title: "Within Service Area",
+                content: popupContent,
+                location: event.mapPoint
+              });
 
             } else {
 
@@ -345,7 +369,7 @@
       });
 
 
-      searchWidget.on("search-complete", function (event) {
+      searchWidget.on("search-complete", async function (event) {
         const result = event.results[0]?.results[0];
 
         // remove custom div displayed when clicked outside
@@ -358,6 +382,8 @@
         if (result) {
 
         const searchPoint = result.feature.geometry;
+
+        const serviceMessage = await checkServicesAtPoint(searchPoint)
 
         // Perform reverse geocoding to get the address
         const locatorUrl = "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer";
@@ -381,13 +407,13 @@
                     const politName = feature.attributes?.POLIT_NAME || "Unknown Service Area";
 
                     view.openPopup({
-                        title: `${politName} Service Area`,
+                        title: ` Within Service Area`,
                         content: `
                         <div class="search-popup-container">
                         <p class="search-popup-address">${address || ""}</p>
                         </div>
                         <div class="report-links">
-                            <p>You are within the service area.</p>
+                            <p>${serviceMessage || ""}</p>
                         </div>
                         `,
                         location: searchPoint
@@ -562,6 +588,90 @@
           ? "Show Legend"
           : "Hide Legend";
       });
+
+
+
+      // Function to determine which services are available based on the selected point.
+      // Input: mapPoint (from search or map click)
+      const checkServicesAtPoint = async (mapPoint) => {
+
+        try {
+
+          // Define your service area layers
+          const baseURL = "https://services3.arcgis.com/PPOHFcbrL50ceHvX/arcgis/rest/services/Water_Reclaim_Sewer_ServiceAreas/FeatureServer"
+          const waterLayer = new FeatureLayer({ url: `${baseURL}/2` });
+          const sewerLayer = new FeatureLayer({ url: `${baseURL}/1` });
+          const irrigationLayer = new FeatureLayer({ url: `${baseURL}/0` });
+
+          // Create a geometry query
+          const query = {
+            geometry: mapPoint,
+            spatialRelationship: "intersects",
+            returnGeometry: false,
+            outFields: ["*"]
+          };
+
+          // Check intersections
+          //First Check if it intersects with water Layer
+          const waterRes = await waterLayer.queryFeatures(query);
+
+          if(waterRes.features.length>0){
+            // If it does, check the sewer and irrigation layers too
+            const sewerRes = await sewerLayer.queryFeatures(query);
+            const irrigationRes = await irrigationLayer.queryFeatures(query);
+
+            const available = ["water"];
+            if (sewerRes.features.length > 0) available.push("sewer");
+            if (irrigationRes.features.length > 0) available.push("irrigation");
+
+            const serviceList = available.join(", ");
+            return `We provide ${serviceList} service${available.length > 1 ? "s" : ""} at this location.`;
+
+          } else{
+              const waterBuffer = geometryEngine.buffer(mapPoint, 35, "feet");
+              const bufferQuery = {
+                geometry: waterBuffer,
+                spatialRelationship: "intersects",
+                returnGeometry: false,
+                outFields: ["*"]
+              };
+
+              const bufferRes = await waterLayer.queryFeatures(bufferQuery);
+              const nearWaterBoundary = bufferRes.features.length > 0;
+
+              if (nearWaterBoundary) {
+                return "This location is near our boundary. Map accuracy may vary—please contact us to confirm service availability.";
+              }
+            }
+        return "We do not provide any services at this location as yet. Please contact us for more information.";
+
+        } catch (error) {
+          console.error("Error checking service areas:", error);
+          return "Unable to determine service availability at this time. Please try again later.";
+        }
+      };
+
+
+
+
+      // // Function to determine which services are available basing on the point selected. This function
+      // // May have a search point as input or map click point
+      // const checkServicesAtPoint = (mapPoint) => {
+      //   // Check if the mapPoint interesects with the water service area FC.
+
+      //         // if it does, check the reclaim and sewer service areas too. Return this information
+      //         // Toho Water Authority provides water, sewer, and irrigation services at this location.
+      //         // The message shoiuld dynamically change based on the services available at the location.
+
+      // // If the mapPoint does not intersect with the water service area FC.
+
+      //         // Check if the point is within 35ft of the water service area FC.
+
+      //             // If it is, return message: This location is near the Toho Water Authority service boundary. Map accuracy may vary—please contact Toho Water Authority to confirm service availability.
+
+      //             // If it is not, return message: Toho Water Authority does not provide any services at this location as yet. Please contact Toho Water Authority for more information.  
+    
+      // };
     });
 
   </script>
