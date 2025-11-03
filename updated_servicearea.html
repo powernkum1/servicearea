@@ -209,28 +209,18 @@
       const featureLayer = new FeatureLayer({
         url: "https://services3.arcgis.com/PPOHFcbrL50ceHvX/arcgis/rest/services/Servicearea_shapefile/FeatureServer/0",
         outFields: ["*"], // Ensure all fields are available
-      })
+        popup
+      });
 
       map.add(featureLayer);
 
+      console.log("Feature Id added to the map., ",featureLayer.id);
+      const splitId = featureLayer.id.split("-")[0];
+      console.log("Split Id FC: ", splitId);
 
-      // Recenter the map to the feature layer
-
-      // Listen for window resize events
-      window.addEventListener("resize", () => {
-        if (featureLayer && featureLayer.fullExtent) {
-          view.goTo({
-            target: featureLayer.fullExtent, // Ensure it focuses on the entire extent of the feature layer
-            zoom: 10, // Optional: Adjust the zoom level as needed
-          }).catch((error) => {
-              console.error("Error recentering the view:", error);
-          });
-        }
-      });
-
-    
       // Clicks outside feature layer should return a popup with address information
-      view.when(()=>{
+      view.whenLayerView(featureLayer).then((layerView) => {
+        console.log("Layer View is ready.");
 
         view.on("click", (event) => {
 
@@ -238,6 +228,7 @@
 
           view.hitTest(event).then( async (response) => {
             const results = response.results;
+
 
             // Remove custom div displayed when clicked outside
             const existingDiv = document.querySelector(".custom-div");
@@ -275,14 +266,41 @@
                 console.error("Error retrieving address:",error);
             }
 
+            //Check results
+            console.log("Hit Test Results: ",results);
+
             // Check if any of the results belong to the FeatureLayer
             const featureLayerHit = results.some(
-              (result) => result.graphic && result.graphic.layer === featureLayer
+              (result) => {
+                const strippedLayerId = result.graphic && result.graphic.layer.id.split("-")[0];
+                console.log("Stripped Layer ID from event: ", strippedLayerId);
+                return result.graphic && strippedLayerId === featureLayer.id.split("-")[0];
+              }
             );
 
+            console.log("Feature Layer Hit: ",featureLayerHit.length );
 
-            if (featureLayerHit) {
+
+            if (featureLayerHit.length>0) {
               // Incase the featurelayer is hit. This is handled somewhere else
+              let popupContent = "";
+              const serviceMessage = await checkServicesAtPoint(mapPoint);
+
+              popupContent = `
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                <div style="display:flex;justify-content:center;text-align:center;font-weight:bold;">${addressOnFeature?`${addressOnFeature}`:""} </div>
+                <div class="report-links">
+                     <p>You are within the service area.</p>
+                      <p>${serviceMessage || ""}</p>
+                </div>
+                </div>
+                `;
+
+              view.openPopup({
+                title: "Within Service Area",
+                content: popupContent,
+                location: event.mapPoint
+              });
 
             } else {
 
