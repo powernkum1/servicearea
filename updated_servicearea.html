@@ -56,7 +56,7 @@
     .report-links{
         display: flex;
         justify-content: center;
-        text-align: center;
+        text-align: left;
         flex-direction: row;
         gap:2rem;
         color: blue;
@@ -115,13 +115,21 @@
       "esri/widgets/BasemapToggle",
       "esri/widgets/Legend",
       "esri/core/reactiveUtils",
-      "esri/rest/locator"
+      "esri/rest/locator",
+      "esri/geometry/geometryEngine"
 
-    ], function (Map, MapView, FeatureLayer, Search, Home, BasemapToggle, Legend, reactiveUtils,locator) {
+    ], function (Map, MapView, FeatureLayer, Search, Home, BasemapToggle, Legend, reactiveUtils, locator, geometryEngine) {
 
+      // Create the feature layer
+        const featureLayer = new FeatureLayer({
+            url: "https://services3.arcgis.com/PPOHFcbrL50ceHvX/arcgis/rest/services/Servicearea_shapefile/FeatureServer/0",
+            outFields: ["*"],
+            popupEnabled: false // disable default popup so we can control it manually
+        });
       // Create the map
       const map = new Map({
-        basemap: "streets-navigation-vector"
+        basemap: "streets-navigation-vector",
+        layers: [featureLayer]
       });
 
 
@@ -156,56 +164,78 @@
 
       });
 
+      // Wait for both layers abd view to be ready
+      featureLayer.when(() => {
+
+
+
+        view.whenLayerView(featureLayer).then((layerView)=>{
+
+            // Listen for map clicks
+            view.on("click",  (event) => {
+
+                view.hitTest(event).then(async (response) =>{
+
+                    if(!response.results.length){
+
+                        // Show fallback popup
+                        view.popup.open({
+                            title: "No Feature Detected",
+                            content: "You clicked on an empty part of the map.",
+                            location: event.mapPoint
+                        });
+                        return;
+                    }
+                  
+
+                    // Match result by URL instead of ID (more stable)
+                    const result = response.results.find(
+                        (r) => r.graphic?.layer?.url === featureLayer.url
+                    );
+
+                    if(!result){
+
+                        view.popup.open({
+                            title: "No Matching Layer Found",
+                            content: "You clicked on another layer or background.",
+                            location: event.mapPoint
+                        });
+                        return;
+                    }
+
+                    // Feature found!
+                    // Ensure popup closes any existing content before opening new one
+                    view.popup.close();
+
+                    const servicesMessage = await checkServicesAtPoint(event.mapPoint);
+                   
+                    const content = `
+                                        <div style="display:flex;flex-direction:column;gap:10px;">
+                                          <div style="display:flex;justify-content:center;text-align:center;font-weight:bold;">${addressOnFeature?`${addressOnFeature}`:""} </div>
+                                          <div class="report-links">
+                                            <p>${servicesMessage} </p>
+                                          </div>
+                                        </div>
+                                        `;
+
+                    setTimeout(()=>{
+                        view.popup.open({
+                            title: "Within Service Area",
+                            content,
+                            location: result.mapPoint || event.mapPoint,
+                            fetchFeatures: false
+                        });
+
+                        view.popup.visible = true;
+                    }, 50)
+                })
+            })
+        })
+      })
+
 
       // intialise a map point
       let addressOnFeature;// Used to dynamically add address to popups on feature
-
-
-      // Add Feature Layer to the map
-
-      const featureLayer = new FeatureLayer({
-        url: "https://services3.arcgis.com/PPOHFcbrL50ceHvX/arcgis/rest/services/Servicearea_shapefile/FeatureServer/0",
-        outFields: ["*"], // Ensure all fields are available
-        popupTemplate: {
-          title: "Within Service Area",
-          content: (feature) => {
-            // Retrieve the POLIT_NAME value from the feature attributes
-            const attributes = feature.graphic.attributes;
-            const reportName = attributes.POLIT_NAME;
-
-            console.log("Attributes: ",attributes.POLIT_NAME)
-
-            // Check if POLIT_NAME exists and construct URLs accordingly
-            if (reportName) {
-
-              var actualReportName = reportName.charAt(0).toUpperCase() + reportName.substring(1).toLowerCase(); // Since for CENTRAL the Name is Central
-
-              if(actualReportName==="St. cloud"){
-                actualReportName="St Cloud"; // Report Name is St Cloud
-              }
-
-              return `
-                <div style="display:flex;flex-direction:column;gap:10px;">
-                <div style="display:flex;justify-content:center;text-align:center;font-weight:bold;">${addressOnFeature?`${addressOnFeature}`:""} </div>
-                <div class="report-links">
-                     <p>You are within the service area.</p>
-                </div>
-                </div>
-                `;
-            } else {
-                // Provide a fallback message if TWA_REPORT is missing
-                return `
-                  <div class="report-links">
-                  <p>You are outside the service area.</p>
-                  </div>
-                  `;
-            }
-          },
-          actions: [] // Disable default actions
-        }
-      });
-
-      map.add(featureLayer);
 
 
       // Recenter the map to the feature layer
@@ -372,22 +402,23 @@
             spatialRelationship: "intersects",
             returnGeometry: false,
             outFields: ["*"]
-          }).then((queryResult)=>{
+          }).then(async (queryResult)=>{
 
                 if (queryResult.features.length > 0) {
 
                     // If features are found, display their details
                     const feature = queryResult.features[0];
                     const politName = feature.attributes?.POLIT_NAME || "Unknown Service Area";
+                    const servicesMessage = await checkServicesAtPoint(searchPoint);
 
                     view.openPopup({
-                        title: `${politName} Service Area`,
+                        title: `Within Service Area`,
                         content: `
                         <div class="search-popup-container">
                         <p class="search-popup-address">${address || ""}</p>
                         </div>
                         <div class="report-links">
-                            <p>You are within the service area.</p>
+                            <p>${servicesMessage}</p>
                         </div>
                         `,
                         location: searchPoint
@@ -411,16 +442,17 @@
                 }
           }).catch(function(error){
 
-            console.error("Error fetching address:", error);
-        view.openPopup({
-          title: "Search Result",
-          content: `
-            <div class="search-popup-container">
-              <p class="search-popup-address">Address could not be retrieved.</p>
-            </div>
-          `,
-          location: searchPoint
-        });
+                console.error("Error fetching address:", error);
+
+                view.openPopup({
+                title: "Search Result",
+                content: `
+                    <div class="search-popup-container">
+                    <p class="search-popup-address">Address could not be retrieved.</p>
+                    </div>
+                `,
+                location: searchPoint
+                });
           })
 
         })
@@ -562,6 +594,86 @@
           ? "Show Legend"
           : "Hide Legend";
       });
+
+
+      // Function to determine which services are available based on the selected point.
+    // Input: mapPoint (from search or map click)
+
+    const checkServicesAtPoint = async (mapPoint) => {
+
+       
+
+        try {
+
+          // Define your service area layers
+          const baseURL = "https://services3.arcgis.com/PPOHFcbrL50ceHvX/arcgis/rest/services/Water_Reclaim_Sewer_ServiceAreas/FeatureServer"
+          const waterLayer = new FeatureLayer({ url: `${baseURL}/2` });
+          const sewerLayer = new FeatureLayer({ url: `${baseURL}/1` });
+          const irrigationLayer = new FeatureLayer({ url: `${baseURL}/0` });
+
+          // Create a geometry query
+          const query = {
+            geometry: mapPoint,
+            spatialRelationship: "intersects",
+            returnGeometry: false,
+            outFields: ["*"]
+          };
+
+          
+
+          // Check intersections
+          //First Check if it intersects with water Layer
+          const waterRes = await waterLayer.queryFeatures(query);
+
+          if(waterRes.features.length>0){
+            // If it does, check the sewer and irrigation layers too
+            const sewerRes = await sewerLayer.queryFeatures(query);
+            const irrigationRes = await irrigationLayer.queryFeatures(query);
+
+            const available = ["water"];
+            if (sewerRes.features.length > 0) available.push("sewer");
+            if (irrigationRes.features.length > 0) available.push("reclaim irrigation");
+
+            let serviceList = "";
+
+            if (available.length === 1) {
+                serviceList = available[0];
+            } else if (available.length === 2) {
+                serviceList = `${available[0]} and ${available[1]}`;
+            } else if (available.length > 2) {
+                serviceList = `${available.slice(0, -1).join(", ")} and ${available[available.length - 1]}`;
+            } else {
+                serviceList = "No services available";
+            }
+
+            return `We provide ${serviceList} service${available.length > 1 ? "s" : ""} at this location.`;
+
+          } else{
+              const waterBuffer = geometryEngine.buffer(mapPoint, 200, "feet");
+              const bufferQuery = {
+                geometry: waterBuffer,
+                spatialRelationship: "intersects",
+                returnGeometry: false,
+                outFields: ["*"]
+              };
+
+              const bufferRes = await waterLayer.queryFeatures(bufferQuery);
+              const nearWaterBoundary = bufferRes.features.length > 0;
+
+              if (nearWaterBoundary) {
+                return "This location is near our boundary. Map accuracy may vary. Please contact us at <a href=\"mailto:customerservice@tohowater.com\">customerservice@tohowater.com</a> or call 407-944-5000 to confirm service availability.";
+              }
+            }
+
+            return "We do not currently provide services at this location. For more information, please contact us at <a href=\"mailto:customerservice@tohowater.com\">customerservice@tohowater.com</a> or call 407-944-5000.";
+
+        } catch (error) {
+          
+          return "Unable to determine service availability at this time. Please try again later.";
+        }
+      };
+
+
     });
 
   </script>
