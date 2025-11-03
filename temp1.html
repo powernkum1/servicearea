@@ -175,20 +175,16 @@
       // Wait for both layers abd view to be ready
       featureLayer.when(() => {
 
-        console.log("Feature layer is ready");
+
 
         view.whenLayerView(featureLayer).then((layerView)=>{
-            console.log("Layer view is ready");
 
             // Listen for map clicks
             view.on("click",  (event) => {
-                console.log("Map clicked at: ", event.mapPoint);
 
                 view.hitTest(event).then(async (response) =>{
-                    console.log("HitTest results: ", response.results);
 
                     if(!response.results.length){
-                        console.log("No features found at clicked location.");
 
                         // Show fallback popup
                         view.popup.open({
@@ -198,9 +194,7 @@
                         });
                         return;
                     }
-                    
-                    // Log all layers from the hit test for debugging
-                    console.log("Layers in hitTest:", response.results.map(r => r.graphic?.layer?.id));
+                  
 
                     // Match result by URL instead of ID (more stable)
                     const result = response.results.find(
@@ -208,7 +202,6 @@
                     );
 
                     if(!result){
-                        console.log("No result matched this layer: ", featureLayer.url);
 
                         view.popup.open({
                             title: "No Matching Layer Found",
@@ -252,60 +245,6 @@
       // intialise a map point
       let addressOnFeature;// Used to dynamically add address to popups on feature
 
-
-      // Add Feature Layer to the map
-
-    //   const featureLayer = new FeatureLayer({
-    //     url: "https://services3.arcgis.com/PPOHFcbrL50ceHvX/arcgis/rest/services/Servicearea_shapefile/FeatureServer/0",
-    //     outFields: ["*"], // Ensure all fields are available
-    //     popupTemplate: {
-    //       title: "Within Service Area",
-    //       content: (feature) => {
-    //         // Retrieve the POLIT_NAME value from the feature attributes
-    //         const attributes = feature.graphic.attributes;
-    //         const reportName = attributes.POLIT_NAME;
-
-    //         console.log("Attributes: ",attributes.POLIT_NAME)
-
-    //         // Check if POLIT_NAME exists and construct URLs accordingly
-    //         if (reportName) {
-
-    //           var actualReportName = reportName.charAt(0).toUpperCase() + reportName.substring(1).toLowerCase(); // Since for CENTRAL the Name is Central
-
-    //           if(actualReportName==="St. cloud"){
-    //             actualReportName="St Cloud"; // Report Name is St Cloud
-    //           }
-
-    //           return `
-    //             <div style="display:flex;flex-direction:column;gap:10px;">
-    //             <div style="display:flex;justify-content:center;text-align:center;font-weight:bold;">${addressOnFeature?`${addressOnFeature}`:""} </div>
-    //             <div class="report-links">
-    //                  <p>You are within the service area.</p>
-    //             </div>
-    //             </div>
-    //             `;
-    //         } else {
-    //             // Provide a fallback message if TWA_REPORT is missing
-    //             return `
-    //               <div class="report-links">
-    //               <p>You are outside the service area.</p>
-    //               </div>
-    //               `;
-    //         }
-    //       },
-    //       actions: [] // Disable default actions
-    //     }
-    //   });
-
-    //   map.add(featureLayer);
-
-        // const featureLayer = new FeatureLayer({
-        //     url: "https://services3.arcgis.com/PPOHFcbrL50ceHvX/arcgis/rest/services/Servicearea_shapefile/FeatureServer/0",
-        //     outFields: ["*"],
-        //     popupEnabled: false // disable default popup so we can control it manually
-        // });
-
-        
 
       // Recenter the map to the feature layer
 
@@ -511,16 +450,17 @@
                 }
           }).catch(function(error){
 
-            console.error("Error fetching address:", error);
-        view.openPopup({
-          title: "Search Result",
-          content: `
-            <div class="search-popup-container">
-              <p class="search-popup-address">Address could not be retrieved.</p>
-            </div>
-          `,
-          location: searchPoint
-        });
+                console.error("Error fetching address:", error);
+
+                view.openPopup({
+                title: "Search Result",
+                content: `
+                    <div class="search-popup-container">
+                    <p class="search-popup-address">Address could not be retrieved.</p>
+                    </div>
+                `,
+                location: searchPoint
+                });
           })
 
         })
@@ -669,7 +609,7 @@
 
     const checkServicesAtPoint = async (mapPoint) => {
 
-        console.log("Checking services at point:", mapPoint);
+       
 
         try {
 
@@ -736,7 +676,7 @@
             return "We do not currently provide services at this location. For more information, please contact us at <a href=\"mailto:customerservice@tohowater.com\">customerservice@tohowater.com</a> or call 407-944-5000.";
 
         } catch (error) {
-          console.error("Error checking service areas:", error);
+          
           return "Unable to determine service availability at this time. Please try again later.";
         }
       };
