@@ -129,11 +129,3 @@ Automated tests are not provided in this static HTML, but you can script basic e
 - No user data is stored by this static example. Reverse geocoding requests are sent to ArcGIS servers.
 - If you add analytics or logging, ensure that personal/sensitive data handling complies with applicable privacy rules.
 
-## Future Improvements (suggested)
-
-- Add configuration file (JSON) for layer URLs and buffer distance so runtime changes don't require editing HTML.
-- Add unit or integration tests (Puppeteer-based) for automated verification of popups, search, and click behavior.
-- Extract inline styles into a separate CSS file for better maintainability.
-- Add optional token-based authentication for ArcGIS services requiring an API key / token.
-- Improve accessibility (ARIA roles, keyboard support) and responsive layout handling.
-
