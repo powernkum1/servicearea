@@ -444,15 +444,15 @@
 
                 console.error("Error fetching address:", error);
 
-                view.openPopup({
-                title: "Search Result",
-                content: `
-                    <div class="search-popup-container">
-                    <p class="search-popup-address">Address could not be retrieved.</p>
-                    </div>
-                `,
-                location: searchPoint
-                });
+                  view.openPopup({
+                    title: "Search Result",
+                    content: `
+                        <div class="search-popup-container">
+                        <p class="search-popup-address">Address could not be retrieved.</p>
+                        </div>
+                    `,
+                    location: searchPoint
+                  });
           })
 
         })
