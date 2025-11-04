@@ -126,12 +126,12 @@
             outFields: ["*"],
             popupEnabled: false // disable default popup so we can control it manually
         });
+
       // Create the map
       const map = new Map({
         basemap: "streets-navigation-vector",
         layers: [featureLayer]
       });
-
 
       // Create the MapView
       const view = new MapView({
@@ -230,7 +230,7 @@
                     }, 50)
                 })
             })
-        })
+          })
       })
 
 
