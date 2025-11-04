@@ -387,22 +387,22 @@
 
         if (result) {
 
-        const searchPoint = result.feature.geometry;
+          const searchPoint = result.feature.geometry;
 
-        // Perform reverse geocoding to get the address
-        const locatorUrl = "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer";
+          // Perform reverse geocoding to get the address
+          const locatorUrl = "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer";
 
-        locator.locationToAddress(locatorUrl,{location:searchPoint})
-        .then(function(response){
-            const address = response.address;
+          locator.locationToAddress(locatorUrl,{location:searchPoint})
+          .then(function(response){
+              const address = response.address;
 
-          // Query the feature layer to check if the search point intersects any feature
-          featureLayer.queryFeatures({
-            geometry: searchPoint,
-            spatialRelationship: "intersects",
-            returnGeometry: false,
-            outFields: ["*"]
-          }).then(async (queryResult)=>{
+            // Query the feature layer to check if the search point intersects any feature
+            featureLayer.queryFeatures({
+              geometry: searchPoint,
+              spatialRelationship: "intersects",
+              returnGeometry: false,
+              outFields: ["*"]
+            }).then(async (queryResult)=>{
 
                 if (queryResult.features.length > 0) {
 
@@ -428,19 +428,19 @@
                     // If no features are found, handle gracefully
 
                     view.openPopup({
-              title: "Outside Service Area",
-              content: `
-                <div class="search-popup-container">
-                  <p class="search-popup-address">${address || ""}</p>
-                    <div class="report-links">
-                        <p style="color:red;">You are outside the service area.</p>
-                    </div>
-                </div>
-              `,
-              location: searchPoint
-            });
-                }
-          }).catch(function(error){
+                      title: "Outside Service Area",
+                      content: `
+                        <div class="search-popup-container">
+                          <p class="search-popup-address">${address || ""}</p>
+                            <div class="report-links">
+                                <p style="color:red;">You are outside the service area.</p>
+                            </div>
+                        </div>
+                      `,
+                      location: searchPoint
+                    });
+                  }
+              }).catch(function(error){
 
                 console.error("Error fetching address:", error);
 
